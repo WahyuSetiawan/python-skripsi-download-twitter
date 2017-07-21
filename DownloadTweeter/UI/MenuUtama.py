@@ -18,12 +18,17 @@ class App(QWidget):
         self.initUI()
 
         #''' testing
+
         self.textbox.setText("kalimantan, jawa")
         self.textboxMaxTweet.setText("20")
         self.textboxTimeLimit.setText("10")
         self.textboxLatitude.setText("-6.2891084")
         self.textboxLongitude.setText("106.7560364")
         self.textboxRadius.setText("1000km")
+
+        self.threadDownloadTwitter = ThreadDownloadTwitter()
+        self.threadDownloadTwitter.update.connect(self.showMessage)
+        self.threadDownloadTwitter.finish.connect(self.finish)
 
         #'''
  
@@ -42,8 +47,10 @@ class App(QWidget):
         lblpencarian.resize(100,25)
 
         self.textbox = QLineEdit(self)
+        self.textbox.setToolTip('Masukan Query anda, untuk melakukan penelusuran perbagian anda bisa menggunakan tanda koma (,)')
         self.textbox.move(lblpencarian.frameGeometry().x() + lblpencarian.frameGeometry().width() + 10, lblpencarian.frameGeometry().y())
         self.textbox.resize(self.frameGeometry().width() - 10 - 10 - 10 - lblpencarian.frameGeometry().width(), lblpencarian.frameGeometry().height())
+
         #'''
 
         #''' line kedua
@@ -52,6 +59,7 @@ class App(QWidget):
         lblmaxtweet.resize(lblpencarian.frameGeometry().width(), lblpencarian.frameGeometry().height())
 
         self.textboxMaxTweet = QLineEdit(self)
+        self.textboxMaxTweet.setToolTip('Tentukan Maksimal Tweet setiap perulangan')
         self.textboxMaxTweet.move(10 + lblmaxtweet.frameGeometry().width() + 10, lblmaxtweet.frameGeometry().y())
         self.textboxMaxTweet.resize(self.frameGeometry().width() / 2 - lblmaxtweet.frameGeometry().width(), lblmaxtweet.frameGeometry().height())
 
@@ -60,8 +68,10 @@ class App(QWidget):
         lbltimelimit.resize(lblpencarian.frameGeometry().width() - 3, lblpencarian.frameGeometry().height())
 
         self.textboxTimeLimit = QLineEdit(self)
+        self.textboxTimeLimit.setToolTip('Tentukan batas waktu')
         self.textboxTimeLimit.move(lbltimelimit.frameGeometry().x() + lbltimelimit.frameGeometry().width(), lbltimelimit.frameGeometry().y())
         self.textboxTimeLimit.resize(self.frameGeometry().width() - self.textboxTimeLimit.frameGeometry().x() - 10, lblmaxtweet.frameGeometry().height())
+
         #'''
 
         #''' line ketiga
@@ -70,6 +80,7 @@ class App(QWidget):
         lblLatitude.resize(lblmaxtweet.frameGeometry().width(), lblmaxtweet.frameGeometry().height())
 
         self.textboxLatitude = QLineEdit(self)
+        self.textboxLatitude.setToolTip('Tentukan Latitude koordinat untuk mencari Tweet')
         self.textboxLatitude.move(10 + lblLatitude.frameGeometry().width() + 10, lblLatitude.frameGeometry().y())
         self.textboxLatitude.resize((self.frameGeometry().width() - 50 - (lblLatitude.frameGeometry().width() * 2)) / 3, lblLatitude.frameGeometry().height())
 
@@ -78,6 +89,7 @@ class App(QWidget):
         lblLongitude.resize(lblmaxtweet.frameGeometry().width() / 2, lblmaxtweet.frameGeometry().height())
 
         self.textboxLongitude = QLineEdit(self)
+        self.textboxLongitude.setToolTip('Tentukan Longtitude koordinat mencari Tweet')
         self.textboxLongitude.move(lblLongitude.frameGeometry().x() + lblLongitude.frameGeometry().width() + 10, lblLongitude.frameGeometry().y())
         self.textboxLongitude.resize(self.textboxLatitude.frameGeometry().width(), lblLatitude.frameGeometry().height())
 
@@ -86,20 +98,21 @@ class App(QWidget):
         lblRadius.resize(lblLongitude.frameGeometry().width(), lblLongitude.frameGeometry().height())
 
         self.textboxRadius = QLineEdit(self)
+        self.textboxRadius.setToolTip('Tentukan radius pencarian Tweet')
         self.textboxRadius.move(lblRadius.frameGeometry().x() + lblRadius.frameGeometry().width() + 10, lblRadius.frameGeometry().y())
         self.textboxRadius.resize(self.frameGeometry().width() - self.textboxRadius.frameGeometry().x() - 10, lblRadius.frameGeometry().height())
 
         #'''
 
-        buttonGrabber = QPushButton("Grab Tweet", self)
-        buttonGrabber.resize(self.frameGeometry().width() / 4,45)
-        buttonGrabber.move(self.frameGeometry().width() - 10 - buttonGrabber.frameGeometry().width(), self.frameGeometry().height() - 10 - buttonGrabber.frameGeometry().height())
+        self.buttonGrabber = QPushButton("Grab Tweet", self)
+        self.buttonGrabber.resize(self.frameGeometry().width() / 4,45)
+        self.buttonGrabber.move(self.frameGeometry().width() - 10 - self.buttonGrabber.frameGeometry().width(), self.frameGeometry().height() - 10 - self.buttonGrabber.frameGeometry().height())
 
         self.listview = QListWidget(self)
         self.listview.move(lblLatitude.frameGeometry().x(), lblLatitude.frameGeometry().y() + lblLatitude.frameGeometry().height() + 10)
-        self.listview.resize(self.frameGeometry().width() - 20, buttonGrabber.frameGeometry().y() - self.listview.frameGeometry().y() - 10)
+        self.listview.resize(self.frameGeometry().width() - 20, self.buttonGrabber.frameGeometry().y() - self.listview.frameGeometry().y() - 10)
 
-        buttonGrabber.clicked.connect(self.on_click)
+        self.buttonGrabber.clicked.connect(self.on_click)
 
         self.show()
 
@@ -112,32 +125,39 @@ class App(QWidget):
 
     @pyqtSlot()
     def on_click(self):
-        jawab = QMessageBox.question(self, 'Pesan', 'Proses Download Data Twitter', QMessageBox.Yes)
+        if self.buttonGrabber.text() == 'Grab Tweet':
+            jawab = QMessageBox.question(self, 'Pesan', 'Proses Download Data Twitter', QMessageBox.Yes)
 
-        threadDownloadTwitter = ThreadDownloadTwitter(self.textbox.text(), self.textboxMaxTweet.text(), self.textboxTimeLimit.text(), self.textboxLatitude.text(), self.textboxLongitude.text(), self.textboxRadius.text())
-        threadDownloadTwitter.update.connect(self.showMessage)
+            self.threadDownloadTwitter.initParameter(self.textbox.text(), self.textboxMaxTweet.text(), self.textboxTimeLimit.text(), self.textboxLatitude.text(), self.textboxLongitude.text(), self.textboxRadius.text())
 
-        if (jawab == QMessageBox.Yes):
-            threadDownloadTwitter.start()
+            if (jawab == QMessageBox.Yes):
+                self.buttonGrabber.setText('Stop Grab')
+                self.threadDownloadTwitter.start()
+        elif self.buttonGrabber.text() == 'Stop Grab':
+            if self.threadDownloadTwitter.isRunning():
+                self.threadDownloadTwitter.stop()
+            self.buttonGrabber.setText('Grab Tweet')
         return
 
     def showMessage(self, message):
         self.listview.addItem(message)
-        #QMessageBox.question(self, "pesan", message, QMessageBox.Yes)
-
-
-
-class ThreadCl(QThread):
-    def __init__(self):
+        self.listview.scrollToBottom()
         return
 
+    def finish(self):
+        self.buttonGrabber.setText('Grab Tweet')
+        return
 
 class ThreadDownloadTwitter(QThread):
     update = pyqtSignal(str)
+    finish = pyqtSignal()
     
-    def __init__(self, subreddits, maxtweet, timelimit, latitude, longtitude, radius):
+    def __init__(self):
         QThread.__init__(self)
         self.downloadTwitter = GrabTwitter.DownloadTweet()
+
+
+    def initParameter(self, subreddits, maxtweet, timelimit, latitude, longtitude, radius):
         self.subreddits = subreddits
         self.downloadTwitter.max_tweets = int(maxtweet)
         self.downloadTwitter.time_limit = int(timelimit)
@@ -150,6 +170,15 @@ class ThreadDownloadTwitter(QThread):
     def run(self):
         subreddits_list = str(self.subreddits).split(',')
 
+        #'''
         for subreddit in subreddits_list:
-            self.downloadTwitter.run(subreddit)
+            self.update.emit(''.join(["Memulai download data ", subreddit]))
+            self.downloadTwitter.run(subreddit, subreddits_list)
+            self.update.emit(''.join(['Pencarian terhadap ', subreddit, ' telah selesai']))
+        #'''
 
+        self.finish.emit()
+
+    def stop(self):
+        self.terminate()
+        self.finish.emit()

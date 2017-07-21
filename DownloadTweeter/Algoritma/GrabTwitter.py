@@ -22,7 +22,7 @@ class DownloadTweet():
 
     time_limit = 0
     max_tweets = 0
-    min_days_old, max_days_old = 0,10          
+    min_days_old, max_days_old = 1,9
     JBD = ""
 
     def load_api(self):
@@ -76,18 +76,17 @@ class DownloadTweet():
         while len(searched_tweets) < max_tweets:
             remaining_tweets = max_tweets - len(searched_tweets)
             try:
-                new_tweets = api.search(q=query+" -filter:retweets", count=remaining_tweets,
-                                        since_id=str(since_id),
-				        max_id=str(max_id-1),geocode=geocode)
-                #print('found',len(new_tweets),'tweets')
+                new_tweets = api.search(q=query, count=remaining_tweets, since_id=str(since_id), max_id=str(max_id-1)
+                                        , geocode=geocode)
+                self.cetak(''.join(['found ',str(len(new_tweets)),' tweets']))
                 if not new_tweets:
-                    #print('no tweets found')
+                    print('no tweets found')
                     break
                 searched_tweets.extend(new_tweets)
                 max_id = new_tweets[-1].id
             except tweepy.TweepError:
-                #print('exception raised, waiting 15 minutes')
-                #print('(until:', dt.datetime.now()+dt.timedelta(minutes=15), ')')
+                self.cetak('exception raised, waiting 15 minutes')
+                self.cetak(''.join(['(until:',str(dt.datetime.now()+dt.timedelta(minutes=15)), ')']))
                 time.sleep(15*60)
                 break # stop the loop
         return searched_tweets, max_id
@@ -104,28 +103,34 @@ class DownloadTweet():
             td = dt.datetime.now() - dt.timedelta(days=days_ago)
             tweet_date = '{0}-{1:0>2}-{2:0>2}'.format(td.year, td.month, td.day)
             # get list of up to 10 tweets
+            print(tweet_date)
             tweet = api.search(q=query, count=10, until=tweet_date)
-            #print('search limit (start/stop):',tweet[0].created_at)
+            print(tweet)
+            print(len(tweet))
+            self.cetak(''.join(['search limit (start/stop):', str(tweet[0].created_at)]))
             # return the id of the first tweet in the list
             return tweet[0].id
 
     def write_tweets(self, tweets, filename, csvfile):
+        self.cetak('menyimpan data Tweet')
         with open(filename, 'a') as f:
             for tweet in tweets:
                 json.dump(tweet._json, f)
                 f.write('\n')
 
-        with open(csvfile, 'w', newline='') as csvfile:
+        with open(csvfile, 'a', newline='') as csvfile:
             cv = csv.writer(csvfile, quoting=csv.QUOTE_ALL)
             for tweet in tweets:
                 cv.writerow([tweet.text.encode('ascii', 'ignore').decode('unicode_escape')])
+        
 
-    def getTweet(self, search_phrase):
+    def getTweet(self, search_phrase, search_phrases):
         self.cetak('Search phrase ='.join(search_phrase))
         
         #''' other variables 
-        name = search_phrase.split()[0]
-        json_file_root = name + '/'  + name
+        #name = search_phrase.split()[0]
+        name = search_phrase
+        json_file_root = 'data/' + name + '/'  + name
         os.makedirs(os.path.dirname(json_file_root), exist_ok=True)
         read_IDs = False
         #'''
@@ -144,12 +149,12 @@ class DownloadTweet():
         #'''
         json_file = json_file_root + '_' + day + '.json'
         if os.path.isfile(json_file):
-            #print('Appending tweets to file named: ', json_file)
+            self.cetak('Appending tweets to file named: '.join([json_file]))
             read_IDs = True
 
         csv_file = json_file_root + '_' + day + '.csv'
         if os.path.isfile(csv_file):
-            #print('Appending tweets to file named: ', csv_file)
+            self.cetak('Appending tweets to file named: '.join([csv_file]))
             read_IDs = True
         #'''
         
@@ -162,10 +167,11 @@ class DownloadTweet():
             # open the json file and get the latest tweet ID
             with open(json_file, 'r') as f:
                 lines = f.readlines()
-                #print(json.loads(lines[-1])['id'])
+                self.cetak(str(json.loads(lines[-1])['id']))
                 max_id = int(json.loads(lines[-1])['id'])
-                #print('Searching from the bottom ID in file')
+                self.cetak('Searching from the bottom ID in file')
         else:
+            print(self.min_days_old)
             # get the ID of a tweet that is min_days_old
             if self.min_days_old == 0:
                 max_id = -1
@@ -174,8 +180,8 @@ class DownloadTweet():
 
         # set the smallest ID to search for
         since_id = self.get_tweet_id(api, days_ago=(self.max_days_old-1))
-        #print('max id (starting point) =', max_id)
-        #print('since id (ending point) =', since_id)
+        self.cetak('max id (starting point) ='.join(str(max_id)))
+        self.cetak('since id (ending point) ='.join(str(since_id)))
         #'''
 
         #''' tweet gathering loop 
@@ -184,7 +190,8 @@ class DownloadTweet():
         count, exitcount = 0, 0
         while dt.datetime.now() < end:
             count += 1
-            print('count =',count)
+            self.cetak(''.join(['count = ', str(count)]))
+            
             # collect tweets and update max_id
             tweets, max_id = self.tweet_search(api, search_phrase, self.max_tweets,
                                             max_id=max_id, since_id=since_id
@@ -197,18 +204,26 @@ class DownloadTweet():
                 exitcount += 1
                 if exitcount == 3:
                     if search_phrase == search_phrases[-1]:
-                        sys.exit('Maximum number of empty tweet strings reached - exiting')
+                        self.cetak('Maximum number of empty tweet strings reached - exiting')
                     else:
                         self.cetak('Maximum number of empty tweet strings reached - breaking')
                         break
-            time.sleep(1)
+            
+            if count >= 100:
+                break
         #'''
+
+        #self.cetak(''.join(['Pencarian terhadap ', search_phrase, ' telah selesai']))
         return
 
-    def run(self, nama):
-        self.cetak(nama)
-        self.getTweet(nama)
-        return
+    def run(self, search, search_phrases):
+        try:
+            self.getTweet(search, search_phrases)
+        except tweepy.TweepError:
+            self.cetak('terlalu banyak mengunduh data tunggu hingga 15 menit hingga siap lagi')
+            time.sleep(15*60)
+            self.getTweet(search, search_phrases)
+        return 
 
     def cetak(self, pesan):
         print(pesan)

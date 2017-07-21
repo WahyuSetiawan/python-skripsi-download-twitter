@@ -28,6 +28,9 @@
     <Compile Include="Algoritma\__init__.py">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Converttocvs\module1.py">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="DownloadTwitter.py" />
     <Compile Include="UI\MenuUtama.py">
       <SubType>Code</SubType>
@@ -38,6 +41,7 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="Algoritma\" />
+    <Folder Include="Converttocvs\" />
     <Folder Include="UI\" />
   </ItemGroup>
   <ItemGroup>
